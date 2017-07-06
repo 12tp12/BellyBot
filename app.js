@@ -10,7 +10,16 @@ const request = require('request')
 var cloudinary = require('cloudinary');
 var requestify = require('requestify');
 var apiai = require('apiai');
+var firebase = require('firebase');
 var appApi = apiai("283317d092fc439c972e50e5cbe72a29");
+
+
+firebase.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    databaseURL: "https://bellybot-929a5.firebaseio.com"
+})
+var ref = firebase.app().database().ref();
+
 
 const app = express()
 
@@ -55,6 +64,9 @@ app.post('/webhook/', function (req, res) {
 
             //Options 1: messages
             if (event.message && event.message.text) {
+                var fbId = event.sender.id;
+                var refPerUser = firebase.database().ref(fbId);
+
                 //sends text to Api.AI
                 text = event.message.text
                 var request = appApi.textRequest(text, {
