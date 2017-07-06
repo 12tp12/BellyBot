@@ -21,9 +21,6 @@ cloudinary.config({
 });
 
 
-
-
-
 app.set('port', (process.env.PORT || 3000))
 
 // parse application/x-www-form-urlencoded
@@ -48,96 +45,97 @@ app.get('/webhook/', function (req, res) {
 
 // to post data
 app.post('/webhook/', function (req, res) {
-    let text = ""
-    let isImage = false;
+        let text = ""
+        let isImage = false;
 
-    for (let i = 0; i < messaging_events.length; i++) {
-        let event = req.body.entry[0].messaging[i]
-        let sender = event.sender.id
+        let messaging_events = req.body.entry[0].messaging
+        for (let i = 0; i < messaging_events.length; i++) {
+            let event = req.body.entry[0].messaging[i]
+            let sender = event.sender.id
 
-        //Options 1: messages
-        if (event.message && event.message.text) {
-            //sends text to Api.AI
-            text = event.message.text
-            var request = appApi.textRequest(text, {
-                sessionId: '1'
-            });
-            request.on('response', function(response) {
+            //Options 1: messages
+            if (event.message && event.message.text) {
+                //sends text to Api.AI
+                text = event.message.text
+                var request = appApi.textRequest(text, {
+                    sessionId: '1'
+                });
+                request.on('response', function (response) {
 
-                //gets the foods list from api.ai
-                let foodLst = response.result.parameters.food
-                let intentName = response.result.metadata.intentName
-                console.log(foodLst);
-                console.log(intentName);
-            });
+                    //gets the foods list from api.ai
+                    let foodLst = response.result.parameters.food
+                    let intentName = response.result.metadata.intentName
+                    console.log(foodLst);
+                    console.log(intentName);
+                });
 
-            request.on('error', function(error) {
-                console.log(error);
-            });
-            request.end();
-            return "ok";
+                request.on('error', function (error) {
+                    console.log(error);
+                });
+                request.end();
+                // return "ok";
+            }
+            //Option 2: images
+            else {
+                //if it is an image
+                if (isImage) {
+                    ///TODO: change image url
+                    let img = cloudinary.uploader.upload("https://scontent.xx.fbcdn.net/v/t35.0-12/19814197_10213074842175520_1929313793_o.jpg?_nc_ad=z-m&oh=46415535aeaec95f129aa1d7f40c0e9b&oe=59616C0C",
+                        function (result) {
+                            let public_id = result.public_id;
+                            let resizedImg = cloudinary.url(public_id,
+                                {width: 544, height: 544, crop: "fill"});
+                            requestify.post('http://example.com', {
+                                hello: 'world'
+                            })
+                                .then(function (response) {
+                                    // Get the response body
+                                    response.getBody();
+                                });
+                        });
+                }
+            }
+
         }
-        //Option 2: images
-        else{
-            isImage= true;
+        //fs.readFile(config.build.temp + 'archive.tar.gz', function(err, data){
+        //    if (err){ cb(err); }
+        //    else {
+        //        var options = {
+        //            body   : data,
+        //            method : 'PUT',
+        //            url    : urlObj
+        //        };
+        //
+        //        request(options, function(err, incoming, response){
+        //            if (err){ cb(err); } else { cb(null, source); }
+        //        });
+        //    }
+        //});
+
+
+        //Echos back a message
+        //
+        for (let i = 0; i < messaging_events.length; i++) {
+            let event = req.body.entry[0].messaging[i]
+            let sender = event.sender.id
+            if (event.message && event.message.text) {
+                let text = event.message.text
+                if (text === 'Generic') {
+                    console.log("welcome to chatbot")
+                    //sendGenericMessage(sender)
+                    continue
+                }
+                sendTextMessage(sender, "Text received, echo: " + text.substring(0, 200))
+            }
+            if (event.postback) {
+                let text = JSON.stringify(event.postback)
+                sendTextMessage(sender, "Postback received: " + text.substring(0, 200), token)
+                continue
+            }
         }
+        res.sendStatus(200)
     }
-
-    //fs.readFile(config.build.temp + 'archive.tar.gz', function(err, data){
-    //    if (err){ cb(err); }
-    //    else {
-    //        var options = {
-    //            body   : data,
-    //            method : 'PUT',
-    //            url    : urlObj
-    //        };
-    //
-    //        request(options, function(err, incoming, response){
-    //            if (err){ cb(err); } else { cb(null, source); }
-    //        });
-    //    }
-    //});
-
-  //if it is an image
-    if(isImage) {
-        ///TODO: change image url
-        let img = cloudinary.uploader.upload("https://scontent.xx.fbcdn.net/v/t35.0-12/19814197_10213074842175520_1929313793_o.jpg?_nc_ad=z-m&oh=46415535aeaec95f129aa1d7f40c0e9b&oe=59616C0C",
-            function (result) {
-                let public_id = result.public_id;
-                let resizedImg = cloudinary.url(public_id,
-                    {width: 544, height: 544, crop: "fill"});
-                requestify.post('http://example.com', {
-                        hello: 'world'
-                    })
-                    .then(function (response) {
-                        // Get the response body
-                        response.getBody();
-                    });
-            });
-    }
-
-    //Echos back a message
-    //let messaging_events = req.body.entry[0].messaging
-    //for (let i = 0; i < messaging_events.length; i++) {
-    //    let event = req.body.entry[0].messaging[i]
-    //    let sender = event.sender.id
-    //    if (event.message && event.message.text) {
-    //        let text = event.message.text
-    //        if (text === 'Generic') {
-    //            console.log("welcome to chatbot")
-    //            //sendGenericMessage(sender)
-    //            continue
-    //        }
-    //        sendTextMessage(sender, "Text received, echo: " + text.substring(0, 200))
-    //    }
-    //    if (event.postback) {
-    //        let text = JSON.stringify(event.postback)
-    //        sendTextMessage(sender, "Postback received: " + text.substring(0, 200), token)
-    //        continue
-    //    }
-    //}
-    res.sendStatus(200)
-})
+)
 
 // recommended to inject access tokens as environmental variables, e.g.
 // const token = process.env.FB_PAGE_ACCESS_TOKEN
