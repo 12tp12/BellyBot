@@ -64,44 +64,47 @@ app.post('/webhook/', function (req, res) {
         let messaging_events = req.body.entry[0].messaging;
 
         //Check if it's an image
-        let imageURL = messaging_events[0].message.attachments[0].payload.url;
-        if (imageURL) {
-            ///Upload the image
-            let img = cloudinary.uploader.upload(imageURL,
-                function (result) {
-                    let public_id = result.public_id;
-                    //Resize the image
-                    let resizedImg = cloudinary.url(public_id,
-                        {width: 544, height: 544, crop: "fill"});
+        if(messaging_events && messaging_events[0] && messaging_events[0].message && messaging_events[0].message.attachments && messaging_events[0].message.attachments[0] && messaging_events[0].message.attachments[0].payload && messaging_events[0].message.attachments[0].payload.url) {
+            let imageURL = messaging_events[0].message.attachments[0].payload.url;
 
-                    // var file = uuid.
-                    // //Send the image to the food api
-                    // http.get(resizedImg, function(response) {
-                    //     response.pipe(file);
-                    // })
+            if (imageURL) {
+                ///Upload the image
+                let img = cloudinary.uploader.upload(imageURL,
+                    function (result) {
+                        let public_id = result.public_id;
+                        //Resize the image
+                        let resizedImg = cloudinary.url(public_id,
+                            {width: 544, height: 544, crop: "fill"});
 
-                    var foodApiRequest = request.post(imageRecApi, function (err, resp, body) {
-                        if (err) {
-                            console.log('Error!');
-                        } else {
-                            let event = req.body.entry[0].messaging[0];
-                            let sender = event.sender.id;
-                            let foodFound = JSON.parse(body).results[0].items[0];
-                            let msg = "So you ate " + foodFound.name + " Nutrition:: Calories: " +  foodFound.nutrition.calories +
+                        // var file = uuid.
+                        // //Send the image to the food api
+                        // http.get(resizedImg, function(response) {
+                        //     response.pipe(file);
+                        // })
+
+                        var foodApiRequest = request.post(imageRecApi, function (err, resp, body) {
+                            if (err) {
+                                console.log('Error!');
+                            } else {
+                                let event = req.body.entry[0].messaging[0];
+                                let sender = event.sender.id;
+                                let foodFound = JSON.parse(body).results[0].items[0];
+                                let msg = "So you ate " + foodFound.name + " Nutrition:: Calories: " + foodFound.nutrition.calories +
                                     " Protein: " + foodFound.nutrition.protein +
                                     " Total Carbs: " + foodFound.nutrition.totalCarbs +
-                                    " Total Fat: " + foodFound.nutrition.totalFat ;
+                                    " Total Fat: " + foodFound.nutrition.totalFat;
 
 
-                            sendTextMessage(sender,  msg)
+                                sendTextMessage(sender, msg)
 
-                        }
-                    });
-                    var form = foodApiRequest.form();
-                    var ls= form.append('file',request(resizedImg) );
+                            }
+                        });
+                        var form = foodApiRequest.form();
+                        var ls = form.append('file', request(resizedImg));
 
 
-                })
+                    })
+            }
         }
         //continue if it's a text
         for (let i = 0; i < messaging_events.length; i++) {
@@ -111,8 +114,12 @@ app.post('/webhook/', function (req, res) {
             //Check if a message exists.
             if (event.message && event.message.text) {
                 var fbId = event.sender.id;
-                var refPerUser = firebase.database().ref(fbId);
 
+                var usersRef = ref.child(fbId);
+                ref.child(fbId).set({
+                    profilePic: fbId
+
+                });
                 //sends text to Api.AI
                 text = event.message.text
                 var apiairequest = appApi.textRequest(text, {
@@ -120,11 +127,19 @@ app.post('/webhook/', function (req, res) {
                 });
                 apiairequest.on('response', function (response) {
 
-                    //gets the foods list from api.ai
-                    let foodLst = response.result.parameters.food
-                    let intentName = response.result.metadata.intentName
-                    console.log(foodLst);
-                    console.log(intentName);
+                    if(response.result.fulfillment.speech){
+                        console.log(response.result.fulfillment.speech);
+                        sendTextMessage(sender, response.result.fulfillment.speech)
+                    }
+
+                    if(response.result.parameters && response.result.parameters.food) {
+                        //gets the foods list from api.ai
+                        let foodLst = response.result.parameters.food
+                        let intentName = response.result.metadata.intentName
+                        console.log(foodLst);
+                        console.log(intentName);
+                        sendTextMessage(sender, intentName)
+                    }
                 });
 
                 apiairequest.on('error', function (error) {
@@ -176,7 +191,7 @@ app.post('/webhook/', function (req, res) {
 
 // recommended to inject access tokens as environmental variables, e.g.
 // const token = process.env.FB_PAGE_ACCESS_TOKEN
-const token = "EAAB2M6AR0pcBANMdk9i78f3xg9NvKBNycWQf8aJVsmk9bPi1VZClN1U02qZA6ZCIu3IJgLTRMqD7R58uZC4oIdk6Pn9Oe6l3ao0IPPMD9Skta3iVIsICNyCwj0Yk72j4aMA7koI9oi2KjajwbzvBG4u4gBZBAIOxTbfORSk3CSAZDZD"
+const token = "EAALx5PSEovYBAJnnZBWyZBGUJ7Cxio2OZBd5hTZC404ys56yh94URGryZCna9qOFQUN4poSBdgHWp2d8cxuQaPzi2PU5KLeAZAFeGoFLjUV1igbZBBb3qggLLY0clVcXrKxc6a5TYSPyN5IZA4O4gQsQdbEMUqvKJOvjaQ1hgawHKQZDZD"
 
 function sendTextMessage(sender, text) {
     let messageData = {text: text}
