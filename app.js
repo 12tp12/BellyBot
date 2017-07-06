@@ -1,23 +1,17 @@
 /**
  * Created by Tomer Patel on 7/6/2017.
  */
+const express = require('express')
+const app = express()
 
-var http = require('http');
+app.get('/', function (req, res) {
+    res.send('Hello World!')
+})
 
-http.createServer(function (req, res) {
-    res.writeHead(200, {'Content-Type': 'text/html'});
-    res.end('Hello World!');
-}).listen(3000);
+app.listen(3000, function () {
+    console.log('Example app listening on port 3000!')
+})
 
-var net = require('net');
-
-var server = net.createServer(function (socket) {
-    socket.write("hi Thats tomer\r\n");
-    socket.on('data',function(dat){
-        socket.write(dat+"\r\n");
-    });
-});
-
-server.listen(23, "127.0.0.1");
+app.use(express.static('public'))
 
 

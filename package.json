@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/12tp12/BellyBot#readme",
   "dependencies": {
+    "express": "^4.15.3",
     "nodemon": "^1.11.0"
   }
 }
