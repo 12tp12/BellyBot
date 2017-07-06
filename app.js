@@ -22,7 +22,7 @@ var ref = firebase.app().database().ref();
 
 
 const app = express()
-
+const imageRecApi = "https://api-2445582032290.production.gw.apicast.io/v1/foodrecognition?user_key=18689360b118be4a6df89f9f340a8934";
 cloudinary.config({
     cloud_name: 'itzik',
     api_key: '767683143553225',
@@ -57,12 +57,54 @@ app.post('/webhook/', function (req, res) {
         let text = ""
         let isImage = false;
 
-        let messaging_events = req.body.entry[0].messaging
+        let messaging_events = req.body.entry[0].messaging;
+
+        //Check if it's an image
+        let imageURL = messaging_events[0].message.attachments[0].payload.url;
+        if (imageURL) {
+            ///Upload the image
+            let img = cloudinary.uploader.upload(imageURL,
+                function (result) {
+                    let public_id = result.public_id;
+                    //Resize the image
+                    let resizedImg = cloudinary.url(public_id,
+                        {width: 544, height: 544, crop: "fill"});
+
+                    //Send the image to the food api
+                    // requestify.get(resizedImg).
+                    //
+                    //
+                    // requestify.request(imageRecApi, {
+                    //     method: 'POST',
+                    //     headers: {
+                    //         'Content-Type': 'multipart/form-data'
+                    //     },
+                    //     dataType: 'binary'
+                    // })
+                    //     .then(function(response) {
+                    //         // get the response body
+                    //         response.getBody();
+                    //
+                    //         // get the response headers
+                    //         response.getHeaders();
+                    //
+                    //         // get specific response header
+                    //         response.getHeader('Accept');
+                    //
+                    //         // get the code
+                    //         response.getCode();
+                    //
+                    //         // get the raw response body
+                    //         response.body;
+                    //     }));
+                });
+        }
+        //continue if it's a text
         for (let i = 0; i < messaging_events.length; i++) {
             let event = req.body.entry[0].messaging[i]
             let sender = event.sender.id
 
-            //Options 1: messages
+            //Check if a message exists.
             if (event.message && event.message.text) {
                 var fbId = event.sender.id;
                 var refPerUser = firebase.database().ref(fbId);
@@ -87,27 +129,6 @@ app.post('/webhook/', function (req, res) {
                 request.end();
                 // return "ok";
             }
-            //Option 2: images
-            else {
-                //if it is an image
-                if (isImage) {
-                    ///TODO: change image url
-                    let img = cloudinary.uploader.upload("https://scontent.xx.fbcdn.net/v/t35.0-12/19814197_10213074842175520_1929313793_o.jpg?_nc_ad=z-m&oh=46415535aeaec95f129aa1d7f40c0e9b&oe=59616C0C",
-                        function (result) {
-                            let public_id = result.public_id;
-                            let resizedImg = cloudinary.url(public_id,
-                                {width: 544, height: 544, crop: "fill"});
-                            requestify.post('http://example.com', {
-                                hello: 'world'
-                            })
-                                .then(function (response) {
-                                    // Get the response body
-                                    response.getBody();
-                                });
-                        });
-                }
-            }
-
         }
         //fs.readFile(config.build.temp + 'archive.tar.gz', function(err, data){
         //    if (err){ cb(err); }
