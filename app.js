@@ -4,14 +4,18 @@
  */
 'use strict'
 
-const express = require('express')
-const bodyParser = require('body-parser')
-const request = require('request')
+const express = require('express');
+const bodyParser = require('body-parser');
+const request = require('request');
+var FormData = require('form-data');
+var http = require('http');
 var cloudinary = require('cloudinary');
 var requestify = require('requestify');
 var apiai = require('apiai');
 var firebase = require('firebase');
 var appApi = apiai("283317d092fc439c972e50e5cbe72a29");
+const fs = require('fs');
+
 
 
 firebase.initializeApp({
@@ -70,34 +74,34 @@ app.post('/webhook/', function (req, res) {
                     let resizedImg = cloudinary.url(public_id,
                         {width: 544, height: 544, crop: "fill"});
 
-                    //Send the image to the food api
-                    // requestify.get(resizedImg).
-                    //
-                    //
-                    // requestify.request(imageRecApi, {
-                    //     method: 'POST',
-                    //     headers: {
-                    //         'Content-Type': 'multipart/form-data'
-                    //     },
-                    //     dataType: 'binary'
+                    // var file = uuid.
+                    // //Send the image to the food api
+                    // http.get(resizedImg, function(response) {
+                    //     response.pipe(file);
                     // })
-                    //     .then(function(response) {
-                    //         // get the response body
-                    //         response.getBody();
-                    //
-                    //         // get the response headers
-                    //         response.getHeaders();
-                    //
-                    //         // get specific response header
-                    //         response.getHeader('Accept');
-                    //
-                    //         // get the code
-                    //         response.getCode();
-                    //
-                    //         // get the raw response body
-                    //         response.body;
-                    //     }));
-                });
+
+                    var foodApiRequest = request.post(imageRecApi, function (err, resp, body) {
+                        if (err) {
+                            console.log('Error!');
+                        } else {
+                            let event = req.body.entry[0].messaging[0];
+                            let sender = event.sender.id;
+                            let foodFound = JSON.parse(body).results[0].items[0];
+                            let msg = "So you ate " + foodFound.name + " Nutrition:: Calories: " +  foodFound.nutrition.calories +
+                                    " Protein: " + foodFound.nutrition.protein +
+                                    " Total Carbs: " + foodFound.nutrition.totalCarbs +
+                                    " Total Fat: " + foodFound.nutrition.totalFat ;
+
+
+                            sendTextMessage(sender,  msg)
+
+                        }
+                    });
+                    var form = foodApiRequest.form();
+                    var ls= form.append('file',request(resizedImg) );
+
+
+                })
         }
         //continue if it's a text
         for (let i = 0; i < messaging_events.length; i++) {
@@ -111,10 +115,10 @@ app.post('/webhook/', function (req, res) {
 
                 //sends text to Api.AI
                 text = event.message.text
-                var request = appApi.textRequest(text, {
+                var apiairequest = appApi.textRequest(text, {
                     sessionId: '1'
                 });
-                request.on('response', function (response) {
+                apiairequest.on('response', function (response) {
 
                     //gets the foods list from api.ai
                     let foodLst = response.result.parameters.food
@@ -123,10 +127,10 @@ app.post('/webhook/', function (req, res) {
                     console.log(intentName);
                 });
 
-                request.on('error', function (error) {
+                apiairequest.on('error', function (error) {
                     console.log(error);
                 });
-                request.end();
+                apiairequest.end();
                 // return "ok";
             }
         }
@@ -148,24 +152,24 @@ app.post('/webhook/', function (req, res) {
 
         //Echos back a message
         //
-        for (let i = 0; i < messaging_events.length; i++) {
-            let event = req.body.entry[0].messaging[i]
-            let sender = event.sender.id
-            if (event.message && event.message.text) {
-                let text = event.message.text
-                if (text === 'Generic') {
-                    console.log("welcome to chatbot")
-                    //sendGenericMessage(sender)
-                    continue
-                }
-                sendTextMessage(sender, "Text received, echo: " + text.substring(0, 200))
-            }
-            if (event.postback) {
-                let text = JSON.stringify(event.postback)
-                sendTextMessage(sender, "Postback received: " + text.substring(0, 200), token)
-                continue
-            }
-        }
+        // for (let i = 0; i < messaging_events.length; i++) {
+        //     let event = req.body.entry[0].messaging[i]
+        //     let sender = event.sender.id
+        //     if (event.message && event.message.text) {
+        //         let text = event.message.text
+        //         if (text === 'Generic') {
+        //             console.log("welcome to chatbot")
+        //             //sendGenericMessage(sender)
+        //             continue
+        //         }
+        //         sendTextMessage(sender, "Text received, echo: " + text.substring(0, 200))
+        //     }
+        //     if (event.postback) {
+        //         let text = JSON.stringify(event.postback)
+        //         sendTextMessage(sender, "Postback received: " + text.substring(0, 200), token)
+        //         continue
+        //     }
+        // }
         res.sendStatus(200)
     }
 )
