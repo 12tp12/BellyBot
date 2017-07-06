@@ -15,7 +15,7 @@ var appApi = apiai("283317d092fc439c972e50e5cbe72a29");
 
 
 firebase.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
+    // credential: admin.credential.cert(serviceAccount),
     databaseURL: "https://bellybot-929a5.firebaseio.com"
 })
 var ref = firebase.app().database().ref();
