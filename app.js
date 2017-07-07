@@ -13,6 +13,7 @@ var cloudinary = require('cloudinary');
 var requestify = require('requestify');
 var apiai = require('apiai');
 var firebase = require('firebase');
+var welcome =require('welcome.js');
 var appApi = apiai("283317d092fc439c972e50e5cbe72a29");
 const fs = require('fs');
 
@@ -114,38 +115,86 @@ app.post('/webhook/', function (req, res) {
             //Check if a message exists.
             if (event.message && event.message.text) {
                 var fbId = event.sender.id;
+                //var hass = ref.hasChild(fbId);
+                ref.child(fbId).once('value', function(snapshot) {
 
-                var usersRef = ref.child(fbId);
-                ref.child(fbId).set({
-                    profilePic: fbId
-
-                });
-                //sends text to Api.AI
-                text = event.message.text
-                var apiairequest = appApi.textRequest(text, {
-                    sessionId: '1'
-                });
-                apiairequest.on('response', function (response) {
-
-                    if(response.result.fulfillment.speech){
-                        console.log(response.result.fulfillment.speech);
-                        sendTextMessage(sender, response.result.fulfillment.speech)
+                    var exists = (snapshot.val() !== null);
+                    if(!exists){
+                        var usersRef = ref.child(fbId);
+                        usersRef.set({
+                            welcomeStage: 0
+                        });
+                        sendTextMessage(fbId, "Hey, I'm Belly :)")
                     }
+                    //User exists
+                    else{
+                        var usersRef = ref.child(fbId);
+                        let userStage =0;
+                        //Get the stage
+                        usersRef.once("value", function(snapshot) {
+                            // usersRef.off("value");
+                            let userStage =snapshot.val().welcomeStage;
+                            // Check if we are in the middle of an opening conversation.
+                            if ( userStage<4) {
+                                //User is in a start conversation
+                                //increase the user stage
+                                ref.child(fbId).child('welcomeStage').set(userStage+1);
+                                sendTextMessage(fbId, "you are in step "+ userStage+1 +"!")
+                            }
+                            else{
+                                //sends text to Api.AI
 
-                    if(response.result.parameters && response.result.parameters.food) {
-                        //gets the foods list from api.ai
-                        let foodLst = response.result.parameters.food
-                        let intentName = response.result.metadata.intentName
-                        console.log(foodLst);
-                        console.log(intentName);
-                        sendTextMessage(sender, intentName)
+                                text = event.message.text
+                                var apiairequest = appApi.textRequest(text, {
+                                    sessionId: '1'
+                                });
+                                apiairequest.on('response', function (response) {
+
+                                    if(response.result.fulfillment.speech){
+                                        console.log(response.result.fulfillment.speech);
+                                        sendTextMessage(sender, response.result.fulfillment.speech)
+                                    }
+
+                                    if(response.result.parameters && response.result.parameters.food) {
+                                        //gets the foods list from api.ai
+                                        let foodLst = response.result.parameters.food
+                                        let intentName = response.result.metadata.intentName
+                                        console.log(foodLst);
+                                        console.log(intentName);
+                                        sendTextMessage(sender, intentName)
+                                    }
+                                });
+
+                                apiairequest.on('error', function (error) {
+                                    console.log(error);
+                                });
+                                apiairequest.end();
+                            }
+
+                        }, function (errorObject) {
+                            console.log("The read failed: " + errorObject.code);
+                        });
+
+
+
                     }
                 });
+                // if(ref.child(fbId)  == null){
+                //     //TODO: welcome scenario
+                //     var usersRef = ref.child(fbId);
+                //     ref.child(fbId).set({
+                //         wlecomeStage: 0
+                //     });
+                //     endTextMessage(sender, "Hey, I'm Belly :)")
+                // }
+                // else {
+                //     var usersRef = ref.child(fbId);
+                //     if (usersRef.wlecomeStage == 0) {
+                //         ref.child(fbId).wlecomeStage.update(1);
+                //         endTextMessage(sender, "I'll be your'e fitness assistent!")
+                //     }
+                // }
 
-                apiairequest.on('error', function (error) {
-                    console.log(error);
-                });
-                apiairequest.end();
                 // return "ok";
             }
         }
